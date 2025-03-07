@@ -2,7 +2,7 @@ import { Controller, Post, Get, Body, Query, UseGuards, Header } from '@nestjs/c
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiHeader, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiHeader, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 
 @ApiTags('Attendance')
 @ApiBearerAuth()
@@ -15,15 +15,46 @@ export class AttendanceController {
   @ApiOperation({
     summary: 'Create attendance records for a student (for today)',
   })
+  @ApiBody({
+    description: 'Attendance record data',
+    schema: {
+      example: {
+        studentId: "12345",
+        subjectName: "Mathematics",
+        periods: [
+          {
+            period: 1,
+            present: true
+          },
+          {
+            period: 2,
+            present: false
+          }
+        ]
+      }
+    }
+  })
   @ApiResponse({
     status: 201,
     description: 'Attendance records created successfully',
+    schema: {
+      example: {
+        studentId: "12345",
+        subjectName: "Mathematics",
+        periods: [
+          {
+            period: 1,
+            present: true
+          },
+          {
+            period: 2,
+            present: false
+          }
+        ]
+      }
+    }
   })
-  @ApiHeader({
-    name: 'Authorization',
-    description: 'Bearer token',
-    required: true,
-  })
+  
   async createAttendance(@Body() createAttendanceDto: CreateAttendanceDto) {
     return this.attendanceService.createAttendance(createAttendanceDto);
   }
@@ -37,11 +68,7 @@ export class AttendanceController {
     status: 200,
     description: 'Attendance records retrieved successfully',
   })
-  @ApiHeader({
-    name: 'Authorization',
-    description: 'Bearer token',
-    required: true,
-  })
+  
   @ApiQuery({
     name: 'studentId',
     required: true,

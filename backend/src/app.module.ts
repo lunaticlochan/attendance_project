@@ -17,6 +17,7 @@ import { MarksModule } from './marks/marks.module';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthRolesGuard } from './auth/guards/auth.guard';
 import { MailModule } from './mail/mail.module';
+import { TestModule } from './test/test.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { MailModule } from './mail/mail.module';
     EventsModule,
     MarksModule,
     MailModule,
+    TestModule,
   ],
   providers: [
     {

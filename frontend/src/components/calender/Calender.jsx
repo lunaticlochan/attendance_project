@@ -59,6 +59,7 @@ const Calendar = ({ attendance, events, studentId }) => {
         }
       });
       setSelectedDayAttendance(response.data.data); // Assuming the response structure
+      console.log(response)
     } catch (error) {
       console.error('Failed to fetch attendance:', error);
       alert('Failed to fetch attendance');
@@ -195,9 +196,14 @@ const Calendar = ({ attendance, events, studentId }) => {
                         attendance.present ? 'bg-green-900/20' : 'bg-red-900/20'
                       }`}
                     >
-                      <span className="font-medium text-white">
-                        {attendance.subject.name}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-white">
+                          {attendance.subject.name}
+                        </span>
+                        <span className="text-sm text-white/60">
+                          Period {attendance.period}
+                        </span>
+                      </div>
                       <span className={`px-3 py-1 rounded-full text-sm ${
                         attendance.present 
                           ? 'bg-green-900/30 text-green-400' 

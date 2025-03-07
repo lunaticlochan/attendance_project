@@ -32,12 +32,80 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Divider,
+  LinearProgress,
 } from '@mui/material';
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.js',
   import.meta.url
 ).toString();
+
+// Add this near the top of the file, alongside inputStyles and menuProps
+const commonPaperStyles = {
+  backgroundColor: 'rgba(30, 41, 59, 0.5)',
+  backdropFilter: 'blur(8px)',
+  border: '1px solid rgba(255, 255, 255, 0.3)',
+};
+
+// Existing style objects
+const inputStyles = {
+  '& .MuiOutlinedInput-root': {
+    color: 'white',
+    '& fieldset': {
+      borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    '&:hover fieldset': {
+      borderColor: 'rgba(255, 255, 255, 0.5)',
+    },
+    '&.Mui-focused fieldset': {
+      borderColor: 'rgba(255, 255, 255, 0.7)',
+    },
+  },
+  '& .MuiInputLabel-root': {
+    color: 'rgba(255, 255, 255, 0.7)',
+    '&.Mui-focused': {
+      color: 'white',
+    },
+  },
+  '& .MuiSelect-select': {
+    color: 'white',
+  },
+  '& input': {
+    color: 'white',
+  },
+  // Add these specific styles for Select components
+  '& .MuiSelect-outlined': {
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  '& .MuiOutlinedInput-notchedOutline': {
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  '&:hover .MuiOutlinedInput-notchedOutline': {
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+  },
+};
+
+const menuProps = {
+  PaperProps: {
+    sx: {
+      bgcolor: 'rgba(30, 41, 59, 0.95)',
+      '& .MuiMenuItem-root': {
+        color: 'white',
+        '&:hover': {
+          bgcolor: 'rgba(255, 255, 255, 0.1)',
+        },
+        '&.Mui-selected': {
+          bgcolor: 'rgba(255, 255, 255, 0.15)',
+          '&:hover': {
+            bgcolor: 'rgba(255, 255, 255, 0.2)',
+          },
+        },
+      },
+    },
+  },
+};
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -231,24 +299,24 @@ const TeacherDashboard = () => {
       const payload = {
         studentId: attendanceForm.studentId,
         subjectName: session.user.subject,
-        periods: attendanceForm.periods.map(period => ({
-          period: period.period,
-          present: period.present
-        }))
+        periods: [{
+          period: selectedPeriod,
+          present: true
+        }]
       };
 
       await axios.post('http://localhost:3000/attendance', payload, {
         headers: { Authorization: `Bearer ${session.token}` }
       });
 
-      alert('Attendance marked successfully!');
+      showNotification('Attendance marked successfully!');
       setAttendanceForm({
         studentId: '',
-        periods: [{ period: 1, present: true }]
+        periods: [{ period: selectedPeriod, present: true }]
       });
     } catch (error) {
       console.error('Failed to mark attendance:', error);
-      alert(error.response?.data?.message || 'Failed to mark attendance');
+      showNotification(error.response?.data?.message || 'Failed to mark attendance', 'error');
     } finally {
       setLoading(false);
     }
@@ -369,52 +437,147 @@ const TeacherDashboard = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/10 backdrop-blur-md rounded-xl shadow-lg p-6 border border-white/20"
+      className="space-y-4"
     >
-      <h2 className="text-2xl font-bold mb-4 text-white">Upload Marks (Excel)</h2>
-      <form onSubmit={handleMarksUpload} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-200">Upload Marks Excel File</label>
-          <input
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={(e) => setPdfFile(e.target.files[0])}
-            className="mt-1 block w-full text-gray-200"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-200">Exam Type</label>
-          <select
-            value={marksForm.examType}
-            onChange={(e) => setMarksForm({ ...marksForm, examType: e.target.value })}
-            className="mt-1 block w-full rounded-lg border border-gray-600 bg-gray-700/50 text-white focus:border-blue-500 focus:ring-blue-500 shadow-sm"
-            required
-          >
-            <option value={EXAM_TYPES.MID1}>Mid Term 1 (20)</option>
-            <option value={EXAM_TYPES.MID2}>Mid Term 2 (20)</option>
-            <option value={EXAM_TYPES.ASSIGNMENT1}>Assignment 1 (10)</option>
-            <option value={EXAM_TYPES.ASSIGNMENT2}>Assignment 2 (10)</option>
-            <option value={EXAM_TYPES.QUIZ}>Quiz (5)</option>
-            <option value={EXAM_TYPES.ATTENDANCE}>Attendance (5)</option>
-          </select>
-        </div>
-        {uploadProgress > 0 && (
-          <div className="w-full bg-gray-700 rounded-full h-2.5">
-            <div
-              className="bg-blue-600 h-2.5 rounded-full"
-              style={{ width: `${uploadProgress}%` }}
-            ></div>
-          </div>
-        )}
-        <button
-          type="submit"
-          disabled={loading || !pdfFile}
-          className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 transition-colors duration-200"
-        >
-          {loading ? 'Processing...' : 'Upload Marks'}
-        </button>
-      </form>
+      <Paper 
+        elevation={3} 
+        sx={{ 
+          p: 3,
+          mt:3,
+          ...commonPaperStyles
+        }}
+      >
+        {/* <Typography variant="h6" gutterBottom sx={{ color: 'white', mb: 3 }}>
+          Upload Marks (Excel)
+        </Typography> */}
+        <form onSubmit={handleMarksUpload} className="space-y-4">
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Paper 
+                variant="outlined" 
+                sx={{ 
+                  p: 2, 
+                  ...commonPaperStyles,
+                  border: '1px dashed rgba(255, 255, 255, 0.3)',
+                  '&:hover': {
+                    border: '1px dashed rgba(255, 255, 255, 0.5)',
+                  }
+                }}
+              >
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setPdfFile(e.target.files[0])}
+                  style={{ display: 'none' }}
+                  id="excel-file-input"
+                />
+                <label htmlFor="excel-file-input">
+                  <Button
+                    component="span"
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<CloudUploadIcon />}
+                    sx={{
+                      color: 'white',
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                      '&:hover': {
+                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      }
+                    }}
+                  >
+                    Upload Excel File
+                  </Button>
+                </label>
+                {pdfFile && (
+                  <Typography sx={{ mt: 2, color: 'white' }}>
+                    Selected file: {pdfFile.name}
+                  </Typography>
+                )}
+              </Paper>
+            </Grid>
+
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel 
+                  id="exam-type-label"
+                  sx={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    '&.Mui-focused': {
+                      color: 'white',
+                    },
+                  }}
+                >
+                  Exam Type
+                </InputLabel>
+                <Select
+                  labelId="exam-type-label"
+                  value={marksForm.examType}
+                  onChange={(e) => setMarksForm({ ...marksForm, examType: e.target.value })}
+                  label="Exam Type"
+                  sx={inputStyles}
+                  MenuProps={menuProps}
+                >
+                  <MenuItem value={EXAM_TYPES.MID1}>Mid Term 1 (20)</MenuItem>
+                  <MenuItem value={EXAM_TYPES.MID2}>Mid Term 2 (20)</MenuItem>
+                  <MenuItem value={EXAM_TYPES.ASSIGNMENT1}>Assignment 1 (10)</MenuItem>
+                  <MenuItem value={EXAM_TYPES.ASSIGNMENT2}>Assignment 2 (10)</MenuItem>
+                  <MenuItem value={EXAM_TYPES.QUIZ}>Quiz (5)</MenuItem>
+                  <MenuItem value={EXAM_TYPES.ATTENDANCE}>Attendance (5)</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {uploadProgress > 0 && (
+              <Grid item xs={12}>
+                <Paper 
+                  sx={{ 
+                    p: 2, 
+                    ...commonPaperStyles
+                  }}
+                >
+                  <Typography sx={{ color: 'white', mb: 1 }}>
+                    Upload Progress: {Math.round(uploadProgress)}%
+                  </Typography>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={uploadProgress} 
+                    sx={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      '& .MuiLinearProgress-bar': {
+                        backgroundColor: 'primary.main',
+                      }
+                    }}
+                  />
+                </Paper>
+              </Grid>
+            )}
+
+            <Grid item xs={12}>
+              <Button
+                type="submit"
+                disabled={loading || !pdfFile}
+                fullWidth
+                variant="contained"
+                sx={{
+                  mt: 2,
+                  backgroundColor: 'primary.main',
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'primary.dark',
+                  },
+                  '&.Mui-disabled': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                    color: 'rgba(255, 255, 255, 0.3)',
+                  }
+                }}
+              >
+                {loading ? 'Processing...' : 'Upload Marks'}
+              </Button>
+            </Grid>
+          </Grid>
+        </form>
+      </Paper>
     </motion.div>
   );
 
@@ -427,7 +590,6 @@ const TeacherDashboard = () => {
     const [attendanceData, setAttendanceData] = useState(null);
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [manualAttendance, setManualAttendance] = useState({});
-    const [selectedImage, setSelectedImage] = useState(null);
 
     const handleImageUpload = async (event) => {
       const file = event.target.files[0];
@@ -479,7 +641,6 @@ const TeacherDashboard = () => {
         alert(`Attendance for Period ${selectedPeriod} marked successfully! (Simulated)`);
         setShowConfirmDialog(false);
         setAttendanceData(null);
-        setSelectedImage(null);
       } catch (error) {
         console.error('Failed to mark attendance:', error);
         alert('Failed to mark attendance');
@@ -521,15 +682,34 @@ const TeacherDashboard = () => {
     return (
       <Box sx={{ p: 3 }}>
         {/* Manual Attendance Section */}
-        <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
-          <Typography variant="h6" gutterBottom color="primary">
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            p: 3, 
+            mb: 4, 
+            backgroundColor: 'rgba(30, 41, 59, 0.5)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}
+        >
+          <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
             Manual Attendance
           </Typography>
           <form onSubmit={handleAddAttendance}>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <InputLabel id="student-select-label">Select Student</InputLabel>
+                  <InputLabel 
+                    id="student-select-label"
+                    sx={{
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      '&.Mui-focused': {
+                        color: 'white',
+                      },
+                    }}
+                  >
+                    Select Student
+                  </InputLabel>
                   <Select
                     labelId="student-select-label"
                     value={attendanceForm.studentId}
@@ -538,6 +718,8 @@ const TeacherDashboard = () => {
                       ...attendanceForm,
                       studentId: e.target.value
                     })}
+                    sx={inputStyles}
+                    MenuProps={menuProps}
                   >
                     {students && students.map((student) => (
                       <MenuItem 
@@ -553,12 +735,24 @@ const TeacherDashboard = () => {
 
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <InputLabel id="period-select-label">Select Period</InputLabel>
+                  <InputLabel 
+                    id="period-select-label"
+                    sx={{
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      '&.Mui-focused': {
+                        color: 'white',
+                      },
+                    }}
+                  >
+                    Select Period
+                  </InputLabel>
                   <Select
                     labelId="period-select-label"
                     value={selectedPeriod}
                     label="Select Period"
                     onChange={(e) => setSelectedPeriod(e.target.value)}
+                    sx={inputStyles}
+                    MenuProps={menuProps}
                   >
                     {periods.map((period) => (
                       <MenuItem key={period} value={period}>
@@ -570,15 +764,31 @@ const TeacherDashboard = () => {
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
+                <Paper 
+                  variant="outlined" 
+                  sx={{ 
+                    p: 2,
+                    bgcolor: 'transparent',
+                    border: 'none',
+                    '& .MuiTypography-root': {
+                      color: 'white',
+                    },
+                    '& .MuiFormControlLabel-label': {
+                      color: 'white',
+                    },
+                    '& .MuiCheckbox-root': {
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      '&.Mui-checked': {
+                        color: 'primary.main',
+                      },
+                    },
+                  }}
+                >
                   <Typography variant="subtitle1" gutterBottom>
                     Period Attendance
                   </Typography>
                   {attendanceForm.periods.map((period, index) => (
-                    <Box key={index} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                      <Typography sx={{ mr: 2, minWidth: '80px' }}>
-                        Period {period.period}
-                      </Typography>
+                    <Box key={index} >
                       <FormControlLabel
                         control={
                           <Checkbox
@@ -609,7 +819,6 @@ const TeacherDashboard = () => {
                   variant="contained"
                   color="primary"
                   disabled={loading}
-                  sx={{ mt: 2 }}
                 >
                   {loading ? 'Marking...' : 'Mark Attendance'}
                 </Button>
@@ -619,20 +828,40 @@ const TeacherDashboard = () => {
         </Paper>
 
         {/* Image-based Attendance Section */}
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom color="primary">
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            p: 3,
+            backgroundColor: 'rgba(30, 41, 59, 0.5)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}
+        >
+          <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
             Image-based Attendance
           </Typography>
           
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel id="image-period-select-label">Select Period</InputLabel>
+                <InputLabel 
+                  id="image-period-select-label"
+                  sx={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    '&.Mui-focused': {
+                      color: 'white',
+                    },
+                  }}
+                >
+                  Select Period
+                </InputLabel>
                 <Select
                   labelId="image-period-select-label"
                   value={selectedPeriod}
                   label="Select Period"
                   onChange={(e) => setSelectedPeriod(e.target.value)}
+                  sx={inputStyles}
+                  MenuProps={menuProps}
                 >
                   {periods.map((period) => (
                     <MenuItem key={period} value={period}>
@@ -653,10 +882,12 @@ const TeacherDashboard = () => {
               />
               <label htmlFor="image-upload">
                 <Button 
-                  variant="contained" 
                   component="span" 
                   fullWidth
                   startIcon={<CloudUploadIcon />}
+                  color="primary"
+                  type="submit"
+                  variant="contained"
                 >
                   Upload Class Image
                 </Button>
@@ -665,26 +896,45 @@ const TeacherDashboard = () => {
           </Grid>
 
           {attendanceData && (
-            <Card sx={{ mt: 3 }}>
+            <Card sx={{ 
+              mt: 3,
+              backgroundColor: 'rgba(30, 41, 59, 0.5)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom color="primary">
+                <Typography variant="h6" gutterBottom sx={{ color: 'white' }}>
                   Attendance Results
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={12} md={6}>
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                      <Typography variant="subtitle1">
+                    <Paper 
+                      variant="outlined" 
+                      sx={{ 
+                        p: 2,
+                        backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}
+                    >
+                      <Typography variant="subtitle1" sx={{ color: 'white' }}>
                         Total Students: {attendanceData.total_students_in_database}
                       </Typography>
-                      <Typography variant="subtitle1">
+                      <Typography variant="subtitle1" sx={{ color: 'white' }}>
                         Detected Students: {attendanceData.total_matches}
                       </Typography>
                     </Paper>
                   </Grid>
                   
                   <Grid item xs={12} md={6}>
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                      <Typography gutterBottom>
+                    <Paper 
+                      variant="outlined" 
+                      sx={{ 
+                        p: 2,
+                        backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}
+                    >
+                      <Typography gutterBottom sx={{ color: 'white' }}>
                         Similarity Threshold: {similarityThreshold}
                       </Typography>
                       <Slider
@@ -694,31 +944,51 @@ const TeacherDashboard = () => {
                         max={1}
                         step={0.01}
                         valueLabelDisplay="auto"
-                        sx={{ width: '100%' }}
+                        sx={{
+                          color: 'primary.main',
+                          '& .MuiSlider-thumb': {
+                            backgroundColor: 'white',
+                          },
+                          '& .MuiSlider-track': {
+                            backgroundColor: 'primary.main',
+                          },
+                          '& .MuiSlider-rail': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                          },
+                        }}
                       />
                     </Paper>
                   </Grid>
                 </Grid>
 
                 <Box sx={{ mt: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
+                  <Typography variant="subtitle1" gutterBottom sx={{ color: 'white' }}>
                     Attendance Details:
                   </Typography>
-                  <Paper variant="outlined" sx={{ p: 2, maxHeight: '400px', overflow: 'auto' }}>
+                  <Paper 
+                    variant="outlined" 
+                    sx={{ 
+                      p: 2, 
+                      maxHeight: '400px', 
+                      overflow: 'auto',
+                      backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}
+                  >
                     <Grid container spacing={2}>
                       {/* Present Students */}
                       <Grid item xs={12} md={6}>
-                        <Typography variant="h6" color="success.main" gutterBottom>
+                        <Typography variant="h6" sx={{ color: 'success.main' }} gutterBottom>
                           Present Students
                         </Typography>
                         {processAttendanceData(attendanceData.matches, students)
                           .filter(student => student.present)
-                          .map((student, index) => (
+                          .map((student) => (
                             <Box 
                               key={`present-${student.rollNo}`}
                               sx={{ 
                                 p: 1, 
-                                bgcolor: 'success.light',
+                                bgcolor: 'success.dark',
                                 borderRadius: 1,
                                 mb: 1,
                                 color: 'white'
@@ -735,17 +1005,17 @@ const TeacherDashboard = () => {
 
                       {/* Absent Students */}
                       <Grid item xs={12} md={6}>
-                        <Typography variant="h6" color="error.main" gutterBottom>
+                        <Typography variant="h6" sx={{ color: 'error.main' }} gutterBottom>
                           Absent Students
                         </Typography>
                         {processAttendanceData(attendanceData.matches, students)
                           .filter(student => !student.present)
-                          .map((student, index) => (
+                          .map((student) => (
                             <Box 
                               key={`absent-${student.rollNo}`}
                               sx={{ 
                                 p: 1, 
-                                bgcolor: 'error.light',
+                                bgcolor: 'error.dark',
                                 borderRadius: 1,
                                 mb: 1,
                                 color: 'white'
@@ -777,19 +1047,27 @@ const TeacherDashboard = () => {
           <Dialog 
             open={showConfirmDialog} 
             onClose={() => setShowConfirmDialog(false)}
+            PaperProps={{
+              sx: {
+                backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                color: 'white',
+              }
+            }}
             maxWidth="sm"
             fullWidth
           >
-            <DialogTitle>Confirm Attendance</DialogTitle>
+            <DialogTitle sx={{ color: 'white' }}>Confirm Attendance</DialogTitle>
             <DialogContent>
-              <Typography>
+              <Typography sx={{ color: 'white' }}>
                 Are you sure you want to mark attendance for Period {selectedPeriod}?
                 <br />
                 Present Students: {Object.values(manualAttendance).filter(Boolean).length}
               </Typography>
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setShowConfirmDialog(false)}>Cancel</Button>
+              <Button onClick={() => setShowConfirmDialog(false)} sx={{ color: 'white' }}>
+                Cancel
+              </Button>
               <Button onClick={handleConfirmAttendance} variant="contained">
                 Confirm
               </Button>
@@ -859,20 +1137,7 @@ const TeacherDashboard = () => {
                       label="Event Title"
                       value={eventForm.title}
                       onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          color: 'white',
-                          '& fieldset': {
-                            borderColor: 'rgba(255, 255, 255, 0.23)',
-                          },
-                          '&:hover fieldset': {
-                            borderColor: 'rgba(255, 255, 255, 0.5)',
-                          },
-                        },
-                        '& .MuiInputLabel-root': {
-                          color: 'rgba(255, 255, 255, 0.7)',
-                        },
-                      }}
+                      sx={inputStyles}
                     />
                   </Grid>
                   <Grid item xs={12}>
@@ -882,45 +1147,33 @@ const TeacherDashboard = () => {
                       type="date"
                       value={eventForm.date}
                       onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          color: 'white',
-                          '& fieldset': {
-                            borderColor: 'rgba(255, 255, 255, 0.23)',
-                          },
-                          '&:hover fieldset': {
-                            borderColor: 'rgba(255, 255, 255, 0.5)',
-                          },
-                        },
-                        '& .MuiInputLabel-root': {
-                          color: 'rgba(255, 255, 255, 0.7)',
-                        },
+                      sx={inputStyles}
+                      InputLabelProps={{
+                        shrink: true,
                       }}
                     />
                   </Grid>
                   <Grid item xs={12}>
                     <FormControl fullWidth>
-                      <InputLabel id="event-type-label">Type</InputLabel>
+                      <InputLabel 
+                        id="event-type-label"
+                        sx={{
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          '&.Mui-focused': {
+                            color: 'white',
+                          },
+                        }}
+                      >
+                        Type
+                      </InputLabel>
                       <Select
                         labelId="event-type-label"
                         id="event-type"
                         value={eventForm.type}
                         onChange={(e) => setEventForm({ ...eventForm, type: e.target.value })}
                         label="Type"
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            color: 'white',
-                            '& fieldset': {
-                              borderColor: 'rgba(255, 255, 255, 0.23)',
-                            },
-                            '&:hover fieldset': {
-                              borderColor: 'rgba(255, 255, 255, 0.5)',
-                            },
-                          },
-                          '& .MuiInputLabel-root': {
-                            color: 'rgba(255, 255, 255, 0.7)',
-                          },
-                        }}
+                        sx={inputStyles}
+                        MenuProps={menuProps}
                       >
                         <MenuItem value="activity">Activity</MenuItem>
                         <MenuItem value="holiday">Holiday</MenuItem>
@@ -962,7 +1215,7 @@ const TeacherDashboard = () => {
               }}
             >
               <Typography variant="h5" className="text-white mb-4">
-                Upload Marks
+                Upload Marks (Excel)
               </Typography>
               {renderMarksForm()}
             </Paper>
